@@ -392,7 +392,7 @@ function mergeposneg(dfpos::DataFrames.DataFrame, dfneg::DataFrames.DataFrame; c
     df = DataFrames.outerjoin(dfpos_fmt, dfneg_fmt, on=setdiff(DataFrames.propertynames(dfpos), [col_value]))
     df[ismissing.(df.pos), :pos] .= 0.0
     df[ismissing.(df.neg), :neg] .= 0.0
-    DataFrames.transform!(df, [:pos, :neg] => ((x, y) -> x .- y) => :value)
+    DataFrames.transform!(df, [:pos, :neg] => ((x, y) -> x .- y) => col_value)
     DataFrames.select!(df, DataFrames.Not([:pos, :neg]))
     return df
 end

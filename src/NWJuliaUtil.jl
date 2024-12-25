@@ -16,7 +16,7 @@ export save_objtoh5, load_h5toobj, save_dftoh5, load_h5todf, loadall_h5todf, sav
 # Profile modification functions
 export generatedailypattern, generatepoissonseries, synthesizeprofile
 # Miscellaneous functions
-export clippy, createdummydata, mergeposneg, averageprofile, equipmentloading, df_filter_collapse_plot, getcolor, convert_serialdate_datetime
+export clippy, createdummydata, mergeposneg, merge_dfs, averageprofile, equipmentloading, df_filter_collapse_plot, getcolor, convert_serialdate_datetime
 # Pending retirement
 
 # Interactive visualization functions with PlotlyJS ===========================
@@ -384,7 +384,7 @@ end
 """
     mergeposneg(dfpos, dfneg; col_value = :value)
 
-Merge two dataframe representing positive values and negative values into a single bidirectional data.
+Merge two dataframes representing positive values and negative values into a single bidirectional data.
 """
 function mergeposneg(dfpos::DataFrames.DataFrame, dfneg::DataFrames.DataFrame; col_value=:value)
     dfpos_fmt = DataFrames.rename(dfpos, col_value => :pos)
@@ -395,6 +395,21 @@ function mergeposneg(dfpos::DataFrames.DataFrame, dfneg::DataFrames.DataFrame; c
     DataFrames.transform!(df, [:pos, :neg] => ((x, y) -> x .- y) => col_value)
     DataFrames.select!(df, DataFrames.Not([:pos, :neg]))
     return df
+end
+
+"""
+    merge_dfs(keyDFPairs::Vector{Pair{String, DataFrame}}; col_value="value")
+
+Merge multiple dataframes with some common columns including a value column. The value column is renamed according to the respective keys
+"""
+function merge_dfs(keyDFPairs::Vector{Pair{String, DataFrames.DataFrame}}; col_value="value")
+    (length(keyDFPairs) < 2) && return DataFrames.DataFrame()
+    mergedDF = DataFrames.rename(keyDFPairs[1].second, col_value => keyDFPairs[1].first)
+    for (colName, df) ∈ keyDFPairs[2:end]
+        df = DataFrames.rename(df, col_value => colName)
+        mergedDF = DataFrames.outerjoin(mergedDF, df, on = intersect(names(mergedDF), names(df)))
+    end
+    return mergedDF
 end
 
 """

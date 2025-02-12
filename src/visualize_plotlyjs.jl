@@ -28,7 +28,7 @@ Plot a line chart from `df`, a dataframe with columns `:time`, `:variable`, `:va
 - `legendorientation` : "h" or "l"
 """
 function plottimeseries(df::DataFrames.DataFrame;
-    xlab::String="Time", ylab::String="Power (kW)", title::Union{String, Missing}=missing,
+    xlab::String="Time", ylab::String="Power (MW)", title::Union{String, Missing}=missing,
     col_time=:time, col_variable=:variable, col_value=:value,
     bstack::Bool=false, selectcolor=missing,
     legendorientation="h",
@@ -340,7 +340,7 @@ end
 """
     plotbox(df::DataFrame; xlab, ylab, title, col_variable, col_value)
 
-Plot a box charge from `df`, a dataframe with columns `:variable` and `:value`
+Plot a box chart from `df`, a dataframe with columns `:variable` and `:value`
 
 # Keyword Arguments
 - `col_variable` and `col_value` as `Symbol` : overwrite the default column names

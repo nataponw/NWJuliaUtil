@@ -20,6 +20,7 @@ import  CategoricalArrays,
 # Visualization with PlotlyJS
 export  saveplot,
         plottimeseries,
+        plotseries_doublestack,
         plotbar,
         plothistogram,
         plotcontour,

@@ -1,8 +1,9 @@
-const _plotly_layout = Dict(
+const _FMT_LAYOUT = Dict(
     :bgcolor_plot   => "rgba(255,255,255,0.0)", # Transparent plot BG
     :bgcolor_paper  => "rgba(255,255,255,1.0)", # White paper BG
     :linecolor_axis => "rgba(000,000,000,1.0)",
     :linecolor_grid => "rgba(200,200,200,0.9)",
+    :linewidth => 1.0,
 )
 
 """
@@ -41,18 +42,26 @@ function plottimeseries(df::DataFrames.DataFrame;
     stackgroup = (bstack ? "one" : missing)
     pTraces = PlotlyJS.PlotlyBase.GenericTrace[]
     for gd ∈ DataFrames.groupby(df, col_variable)
-        push!(pTraces, PlotlyJS.scatter(x=gd[:, col_time], y=gd[:, col_value], name=gd[1, col_variable], mode="lines", stackgroup=stackgroup, line=PlotlyJS.PlotlyBase.attr(color=selectcolor(gd[1, col_variable]))))
+        push!(pTraces, PlotlyJS.scatter(
+            x=gd[:, col_time], y=gd[:, col_value], name=gd[1, col_variable],
+            mode="lines", stackgroup=stackgroup,
+            line_width=_FMT_LAYOUT[:linewidth],
+            line_color=selectcolor(gd[1, col_variable]),
+        ))
     end
     showlegend = length(pTraces) > 1
     pLayout = PlotlyJS.Layout(
         xaxis_rangeslider_visible=false,
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(
+            linecolor=_FMT_LAYOUT[:linecolor_axis],
+            rangemode="tozero",
+        ),
         showlegend=showlegend, legend=PlotlyJS.attr(orientation=legendorientation),
     )
     p = PlotlyJS.plot(pTraces, pLayout)
@@ -77,6 +86,64 @@ end
 Format a single timeseries vector into a `df` with a proper structure, then pass it to `plottimeseries`
 """
 plottimeseries(vt::AbstractVector; kwargs...) = plottimeseries(DataFrames.DataFrame(:time => 1:length(vt), :variable => "", :value => vt); kwargs...)
+
+"""
+    plotseries_doublestack(dfArea, dfLine; xlab, ylab, title, col_time, col_variable, col_value, selectcolor, legendorientation, factor_linewidth)
+
+Plot a stacked area chart together with a stacked line chart from `dfArea` and `dfLine`
+
+Both dataframes must contain columns for time, variable, and value
+
+# Keyword Arguments
+- `xlab`, `ylab`, `title` as `String`
+- `col_time`, `col_variable`, `col_value` as `Symbol` : overwrite the default column names
+- `selectcolor` : a function that returns a color given a variable name
+- `legendorientation` : "h" or "l"
+- `factor_linewidth` : increase the linewidth from the default value
+"""
+function plotseries_doublestack(dfArea::DataFrames.DataFrame, dfLine::DataFrames.DataFrame;
+    xlab::String="Time", ylab::String="Power (MW)", title::Union{String, Missing}=missing,
+    col_time=:time, col_variable=:variable, col_value=:value,
+    selectcolor=missing, legendorientation="h", factor_linewidth=2
+)
+    # Color palette
+    ismissing(selectcolor) && (selectcolor = (x -> missing))
+    # Plot settings
+    pTraces = PlotlyJS.PlotlyBase.GenericTrace[]
+    ## Add area traces
+    for gd ∈ DataFrames.groupby(dfArea, col_variable)
+        push!(pTraces, PlotlyJS.scatter(
+            x=gd[:, col_time], y=gd[:, col_value], name=gd[1, col_variable],
+            mode="lines", stackgroup="areas",
+            line_width=0.0,
+            line_color=selectcolor(gd[1, col_variable]),
+        ))
+    end
+    ## Add line traces
+    for gd ∈ DataFrames.groupby(dfLine, col_variable)
+        push!(pTraces, PlotlyJS.scatter(
+            x=gd[:, col_time], y=gd[:, col_value], name=gd[1, col_variable],
+            mode="lines", stackgroup="lines",
+            line_width=_FMT_LAYOUT[:linewidth] * factor_linewidth,
+            line_color=selectcolor(gd[1, col_variable]),
+            fill="none",
+        ))
+    end
+    # Set the layout
+    pLayout = PlotlyJS.Layout(
+        xaxis_rangeslider_visible=false,
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
+        title=title,
+        xaxis_title=xlab,
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
+        yaxis_title=ylab,
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
+        showlegend=true, legend=PlotlyJS.attr(orientation=legendorientation),
+    )
+    p = PlotlyJS.plot(pTraces, pLayout)
+    return p
+end
 
 """
     plotbar(df::DataFrame; xlab, ylab, title, col_axis, col_variable, col_value, bstack, selectcolor, legendorientation)
@@ -109,13 +176,13 @@ function plotbar(df::DataFrames.DataFrame;
     showlegend = length(pTraces) > 1
     pLayout = PlotlyJS.Layout(
         xaxis_rangeslider_visible=false,
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showlegend=showlegend, legend=PlotlyJS.attr(orientation=legendorientation),
         barmode=barmode,
     )
@@ -137,13 +204,13 @@ function plothistogram(dt::Dict; xlab::String="Value", ylab::String="", title::U
     showlegend = length(pTraces) > 1
     pLayout = PlotlyJS.Layout(
         xaxis_rangeslider_visible=false,
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showlegend=showlegend, legend=PlotlyJS.attr(orientation="h"),
         barmode="overlay",
     )
@@ -177,13 +244,13 @@ function plotcontour(x, y, z; xlab::String="x", ylab::String="y", title::Union{S
         )
     )
     layout = PlotlyJS.Layout(
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showscale=true,
     )
     p = PlotlyJS.plot(trace, layout)
@@ -208,28 +275,28 @@ Create a contour plot given the range of `x` and `y`, and the matrix `z` (n_x x 
 function plotsurface(x, y, z; xlab::String="x", ylab::String="y", zlab::String="z", title::Union{String, Missing}=missing, zmin=nothing, zmax=nothing)
     trace = PlotlyJS.surface(x=x, y=y, z=z, zmin=zmin, zmax=zmax)
     layout = PlotlyJS.Layout(
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         showscale=true,
         scene=PlotlyJS.attr(
             xaxis_title=xlab,
             xaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
             yaxis_title=ylab,
             yaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
             zaxis_title=zlab,
             zaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
         ),
     )
@@ -259,13 +326,13 @@ function plotheatmap(x, y, z; xlab::String="x", ylab::String="y", title::Union{S
         x=x, y=y, z=z, zmin=zmin, zmax=zmax
     )
     layout = PlotlyJS.Layout(
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showscale=true,
     )
     p = PlotlyJS.plot(trace, layout)
@@ -295,27 +362,27 @@ function plotvolume(X, Y, Z, V; xlab::String="x", ylab::String="y", zlab::String
         opacity=0.20, surface_count=surface_count,
     )
     layout = PlotlyJS.Layout(
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         scene=PlotlyJS.attr(
             xaxis_title=xlab,
             xaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
             yaxis_title=ylab,
             yaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
             zaxis_title=zlab,
             zaxis=PlotlyJS.attr(
                 showbackground=false,
-                gridcolor=_plotly_layout[:linecolor_grid],
-                zerolinecolor=_plotly_layout[:linecolor_axis],
+                gridcolor=_FMT_LAYOUT[:linecolor_grid],
+                zerolinecolor=_FMT_LAYOUT[:linecolor_axis],
             ),
         ),
     )
@@ -348,17 +415,17 @@ Plot a box chart from `df`, a dataframe with columns `:variable` and `:value`
 function plotbox(df::DataFrames.DataFrame; xlab::String="Scenario", ylab::String="", title::Union{String, Missing}=missing, col_variable=:variable, col_value=:value)
     pTraces = PlotlyJS.PlotlyBase.GenericTrace[]
     for gd ∈ DataFrames.groupby(df, col_variable)
-        push!(pTraces, PlotlyJS.box(y=gd[:, col_value], name=gd[1, col_variable]))
+        push!(pTraces, PlotlyJS.box(y=gd[:, col_value], name=gd[1, col_variable], line_width=_FMT_LAYOUT[:linewidth]))
     end
     pLayout = PlotlyJS.Layout(
         xaxis_rangeslider_visible=false,
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showlegend=false, legend=PlotlyJS.attr(orientation="h"),
         barmode="overlay",
     )
@@ -453,13 +520,13 @@ function plotscatter(df::DataFrames.DataFrame;
     showlegend = length(pTraces) > 1
     pLayout = PlotlyJS.Layout(
         xaxis_rangeslider_visible=false,
-        plot_bgcolor=_plotly_layout[:bgcolor_plot],
-        paper_bgcolor=_plotly_layout[:bgcolor_paper],
+        plot_bgcolor=_FMT_LAYOUT[:bgcolor_plot],
+        paper_bgcolor=_FMT_LAYOUT[:bgcolor_paper],
         title=title,
         xaxis_title=xlab,
-        xaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        xaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         yaxis_title=ylab,
-        yaxis=PlotlyJS.attr(linecolor=_plotly_layout[:linecolor_axis]),
+        yaxis=PlotlyJS.attr(linecolor=_FMT_LAYOUT[:linecolor_axis]),
         showlegend=showlegend, legend=PlotlyJS.attr(orientation=legendorientation),
     )
     p = PlotlyJS.plot(pTraces, pLayout)

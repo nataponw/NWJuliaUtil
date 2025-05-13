@@ -39,13 +39,13 @@ function plottimeseries(df::DataFrames.DataFrame;
     # Color palette
     ismissing(selectcolor) && (selectcolor = (x -> missing))
     # Plot settings
-    stackgroup = (bstack ? "one" : missing)
     pTraces = PlotlyJS.PlotlyBase.GenericTrace[]
     for gd ∈ DataFrames.groupby(df, col_variable)
         push!(pTraces, PlotlyJS.scatter(
             x=gd[:, col_time], y=gd[:, col_value], name=gd[1, col_variable],
-            mode="lines", stackgroup=stackgroup,
-            line_width=_FMT_LAYOUT[:linewidth],
+            mode="lines",
+            stackgroup=(bstack ? "one" : missing),
+            line_width=(bstack ? 0.0 : _FMT_LAYOUT[:linewidth]),
             line_color=selectcolor(gd[1, col_variable]),
         ))
     end

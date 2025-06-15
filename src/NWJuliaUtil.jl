@@ -10,6 +10,7 @@ import  DataFrames,
         Plots,
         Statistics,
         StatsBase,
+        XLSX,
         SQLite
 
 # Dependencies used by depreciated functions
@@ -38,6 +39,7 @@ export  save_objtoh5,
         load_h5toobj,
         save_dftodb,
         load_dbtodf,
+        save_toexcel,
         list_dbtable,
         clippy,
         appendtxt
@@ -69,6 +71,7 @@ include(joinpath(@__DIR__, "visualize_plots.jl"))
 # Data interface ==============================================================
 include(joinpath(@__DIR__, "dataio_hdf5.jl"))
 include(joinpath(@__DIR__, "dataio_sqlite.jl"))
+include(joinpath(@__DIR__, "dataio_excel.jl"))
 include(joinpath(@__DIR__, "dataio_miscellaneous.jl"))
 
 # Profile modification ========================================================
